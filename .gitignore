@@ -2,3 +2,4 @@ note.txt
 pipfile
 pipfile.lock
 config.py
+__pycache__
