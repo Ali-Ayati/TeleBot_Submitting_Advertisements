@@ -31,7 +31,19 @@ def start_command(m):
     except:
         bot.send_message(chat_id=m.chat.id, text= "سلام کاربر قدیمی.", reply_markup=markup)
         
+@bot.callback_query_handler(func=lambda call: call.data == 'proceed')
+def proceed(call):
+    is_member = check_join(call.from_user.id, channels_)
+    
+    if is_member:
+        markup = InlineKeyboardMarkup()
+        button = InlineKeyboardButton(text="تایید", callback_data='proceed')
+        markup.add(button)
         
+        bot.send_message(call.message.chat_id, text=f"شما مجاز به استفاده از ربات هستید.", reply_markup=markup)
+    
+    else:
+        bot.send_message(call.message.chat_id, text=f"باید در کانال ما جوین شوید.\n{channels_[0]}", reply_markup=markup)
         
         
         
