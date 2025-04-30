@@ -1,0 +1,4 @@
+CREATE TABLE users(
+	id BIGINT PRIMARY KEY,
+    balance INT DEFAULT 0
+)
