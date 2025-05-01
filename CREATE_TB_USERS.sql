@@ -1,4 +1,5 @@
 CREATE TABLE users(
 	id BIGINT PRIMARY KEY,
-    balance INT DEFAULT 0
+    balance INT DEFAULT 0,
+    lang VARCHAR(255) DEFAULT 'per'
 )

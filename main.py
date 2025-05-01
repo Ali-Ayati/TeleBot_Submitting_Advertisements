@@ -16,17 +16,38 @@ def check_join(user, channels: str) -> bool:
 
 @bot.message_handler(commands=['start'])
 def start_command(m):
-    markup = InlineKeyboardMarkup()
-    button = InlineKeyboardButton(text="ادامه", callback_data='proceed')
-    markup.add(button)
     
-    try:
-        with mysql.connector.connect(**db_config) as connection:
-            with connection.cursor() as cursor:
-                sql = "SELECT id FROM users WHERE id = %s"
-                val = m.from_user.id
+    with mysql.connector.connect(**db_config) as connection:
+        with connection.cursor() as cursor:
+            sql = "SELECT id FROM users WHERE id = %s"
+            val = m.from_user.id
+            cursor.execute(sql, (val,))
+            result = cursor.fetchone()
+            
+            if result:
+                if result[0] == "per":
+                    bot.send_message(m.chat.id, text="به ربات خوش آمدید.")
+                else:
+                    bot.send_message(m.chat.id, text="welcom to bot.")
+            
+            else:
+                sql = "INSERT INTO users (id) VALUES (%s)"
                 cursor.execute(sql, (val,))
+                connection.commit()
                 
+                markup = InlineKeyboardMarkup(row_width=1)
+                eng_button = InlineKeyboardButton(text="English", callback_data='eng')
+                per_button = InlineKeyboardButton(text="فارسی", callback_data="per")
+                markup.add(eng_button, per_button)
+                
+                bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
+                
+@bot.callback_query_handler(func=lambda call: call.data in ["per", "eng"])
+def
+
+
+
+
         
 @bot.callback_query_handler(func=lambda call: call.data == 'proceed')
 def proceed(call):
