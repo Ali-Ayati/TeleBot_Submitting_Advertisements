@@ -1,18 +1,23 @@
 # This is my data; you should replace it with your own.
 from config import telgram_api, db_config, channels_
 from telebot import TeleBot
-from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
+from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 import mysql.connector
 
-bot = TeleBot(telgram_api)
 
-def check_join(user, channels: str) -> bool:
+
+def check_join(user, channels: list) -> bool:
     for i in channels:
         is_member = bot.get_chat_member(chat_id=i, user_id=user)
         
         if is_member.status in ['kicked', 'left']: # اگر هیچوقت هم جوین نداده بود میشه left
             return False
     return True
+
+
+
+bot = TeleBot(telgram_api, parse_mode="HTML")
+
 
 @bot.message_handler(commands=['start'])
 def start_command(m):
@@ -26,9 +31,30 @@ def start_command(m):
             
             if result:
                 if result[0] == "per":
-                    bot.send_message(m.chat.id, text="به ربات خوش آمدید.")
+                    
+                    markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+                    markup.add("ثبت آگهی")
+                    markup.add("حساب کاربری", "شارژ حساب", "زیرمجموعه گیری", "پشتیبانی")
+                    
+                    bot.send_message(m.chat.id,
+                                        text="""به ربات ما خوش آمدید!
+                                        این ربات برای ثبت و مدیریت آگهی‌های شما طراحی شده است.
+                                        با استفاده از این ربات، می‌توانید آگهی‌های خود را به راحتی ثبت و منتشر کنید.""",
+                                        parse_mode="HTML",
+                                        reply_markup=markup)
+                    
                 else:
-                    bot.send_message(m.chat.id, text="welcom to bot.")
+                    
+                    markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+                    markup.add("Submit ADS")
+                    markup.add("my account", "Add Funds", "Referral", "Support")
+                    
+                    bot.send_message(m.chat.id, 
+                                        text="""Welcome to our bot!
+                                        This bot is designed to help you submit and manage your advertisements.
+                                        You can easily create and publish your ads using this service.""", 
+                                        parse_mode="HTML",
+                                        reply_markup=markup)
             
             else:
                 sql = "INSERT INTO users (id) VALUES (%s)"
@@ -41,12 +67,39 @@ def start_command(m):
                 markup.add(eng_button, per_button)
                 
                 bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
-                
+
+
+
+
+
+
+
+@bot.message_handler(commands=['language'])
+def language(m):
+    markup = InlineKeyboardMarkup(row_width=1)
+    eng_button = InlineKeyboardButton(text="English", callback_data='eng')
+    per_button = InlineKeyboardButton(text="فارسی", callback_data="per")
+    markup.add(eng_button, per_button)
+    
+    bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
+
+
+
+
+
+
 @bot.callback_query_handler(func=lambda call: call.data in ["per", "eng"])
 def lang_callback_button(call):
+    
     data = call.data
     id = call.from_user.id
+    
     if data == 'eng':
+        
+        markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+        markup.add("Submit ADS")
+        markup.add("my account", "Add Funds", "Referral", "Support")
+        
         with mysql.connector.connect() as connection:
             with connection.cursor() as cursor:
                 sql = "UPDATE users SET lang = %s WHERE id = %s"
@@ -54,8 +107,13 @@ def lang_callback_button(call):
                 cursor.execute(sql, val)
                 connection.commit()
                 
-                bot.send_message(call.message.chat_id, text="Your language has been changed to English.")
+                bot.send_message(call.message.chat_id, text="Your language has been changed to English.", reply_markup=markup)
     else:
+        
+        markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+        markup.add("ثبت آگهی")
+        markup.add("حساب کاربری", "شارژ حساب", "زیرمجموعه گیری", "پشتیبانی")
+        
         with mysql.connector.connect() as connection:
             with connection.cursor() as cursor:
                 sql = "UPDATE users SET lang = %s WHERE id = %s"
@@ -64,6 +122,8 @@ def lang_callback_button(call):
                 connection.commit()
                 
                 bot.send_message(call.message.chat_id, text="زبان شما به فارسی تغییر یافت.")
+
+
 
 
 
