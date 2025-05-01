@@ -1,4 +1,5 @@
-from config import *
+# This is my data; you should replace it with your own.
+from config import telgram_api, db_config, channels_
 from telebot import TeleBot
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup
 import mysql.connector
@@ -22,14 +23,10 @@ def start_command(m):
     try:
         with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
-                sql = "INSERT INTO users (id) VALUES (%s)"
+                sql = "SELECT id FROM users WHERE id = %s"
                 val = m.from_user.id
                 cursor.execute(sql, (val,))
-                connection.commit()
-        bot.send_message(chat_id=m.chat.id, text= "سلام کاربر جدید.", reply_markup=markup)      
-             
-    except:
-        bot.send_message(chat_id=m.chat.id, text= "سلام کاربر قدیمی.", reply_markup=markup)
+                
         
 @bot.callback_query_handler(func=lambda call: call.data == 'proceed')
 def proceed(call):
