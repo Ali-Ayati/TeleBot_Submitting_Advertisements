@@ -43,8 +43,27 @@ def start_command(m):
                 bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
                 
 @bot.callback_query_handler(func=lambda call: call.data in ["per", "eng"])
-def
-
+def lang_callback_button(call):
+    data = call.data
+    id = call.from_user.id
+    if data == 'eng':
+        with mysql.connector.connect() as connection:
+            with connection.cursor() as cursor:
+                sql = "UPDATE users SET lang = %s WHERE id = %s"
+                val = (data, id)
+                cursor.execute(sql, val)
+                connection.commit()
+                
+                bot.send_message(call.message.chat_id, text="Your language has been changed to English.")
+    else:
+        with mysql.connector.connect() as connection:
+            with connection.cursor() as cursor:
+                sql = "UPDATE users SET lang = %s WHERE id = %s"
+                val = (data, id)
+                cursor.execute(sql, val)
+                connection.commit()
+                
+                bot.send_message(call.message.chat_id, text="زبان شما به فارسی تغییر یافت.")
 
 
 
