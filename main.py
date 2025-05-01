@@ -14,6 +14,14 @@ def check_join(user, channels: list) -> bool:
             return False
     return True
 
+def user_balance(id):
+    with mysql.connector.connect(**db_config) as connection:
+        with connection.cursor() as cursor:
+            sql = "SELECT balance FROM users WHERE id = %s"
+            val = (id,)
+            cursor.execute(sql, val)
+            result = cursor.fetchone()
+            return result[0]
 
 
 bot = TeleBot(telgram_api, parse_mode="HTML")
@@ -82,6 +90,22 @@ def language(m):
     markup.add(eng_button, per_button)
     
     bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
+
+
+
+
+
+@bot.message_handler(func=lambda m: m.text in ["حساب کاربری", "my account"])
+def account(m):
+    txt = m.text
+    user_id = m.from_user.id
+    
+    if txt == "حساب کاربری":
+        balance = user_balance(user_id)
+        bot.send_message(m.chat.id, text=f"""اطلاعات حساب کاربری:
+                         نام کاربری: <a href='tg://user?id={m.from_user.id}>{m.from_user.first_name}</a>
+                         شناسه کاربری: <code>{m.from_user.id}</code>
+                         موجودی: {balance} تومان""", parse_mode="HTML")
 
 
 
