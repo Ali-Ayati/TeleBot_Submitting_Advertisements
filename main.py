@@ -1,5 +1,5 @@
 # This is my data; you should replace it with your own.
-from config import telgram_api, db_config, channels_
+from config import telgram_api, db_config, channels_, admin_id
 from telebot import TeleBot, custom_filters
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 import mysql.connector
@@ -30,8 +30,18 @@ class Support(StatesGroup):
     text = State()
     respond = State()
 
+def escape_special_characters(txt):
+    special_char = r"(\*\_\[\]\(\)\~\`\>\#\+\-\=\|\{\}\.\!)"
+    return re.sub(special_char, r'\\\1', txt)
+
+
 
 state_st = StateMemoryStorage()
+chat_ids = []
+texts = {}
+
+
+
 
 bot = TeleBot(telgram_api, state_storage=state_st)
 
@@ -120,6 +130,64 @@ def account(m):
 
 
 
+@bot.message_handler(func=lambda m: m.text in ["Support", "پشتیبانی"])
+def support_message(m):
+    "پیامی که کاربر برای ادمین میفرسته."
+    txt = m.text
+    id = m.chat.id
+    
+    if txt == "پشتیبانی":
+        bot.send_message(chat_id=id, text="لطفا پیام خود را ارسال کنید:")
+        # منتظر پیام کاربر میمونه
+        bot.set_state(user_id=m.from_user.id, state=Support.text, chat_id=id)
+
+@bot.message_handler(state=Support.text)
+def support_txt(m):
+    "دریافت پیام کاربر توسط ادمین."
+    id = m.from_user.id
+    
+    markup = InlineKeyboardMarkup()
+    button = InlineKeyboardButton(text="پاسخ", callback_data=id)
+    markup.add(button)
+    
+    # اینحا ای دی ادمینو قرار میدیم تا پیام کاربر برای ادمین ارسال بشه
+    bot.send_message(chat_id=admin_id, text=f"""پیامی از کاربر با ای دی <code>{id}</code> با یوزرنیم @{m.from_user.username}:\nمتن پیام:\n
+                     <b>{escape_special_characters(m.text)}</b>""", reply_markup=markup, parse_mode="HTML")
+    
+    bot.send_message(chat_id=m.chat.id, text="پیام شما برای ادمین ارسال شد.")
+    
+    texts[id] = m.text
+    
+    # این برای اینه که دیگه منتظر پیام کاربر برای ارسال به ادمین نمونه رباتمون
+    bot.delete_state(user_id=id, chat_id=m.chat.id)
+
+@bot.message_handler(state=Support.respond)
+def answer_txt(m):
+    "ارسال پاسخ ادمین برای کاربر."
+    chat_id = chat_ids[-1]
+    
+    if chat_id in texts:
+        bot.send_message(chat_id=chat_id, text=f"""پیام شما: \n<i>{escape_special_characters(texts[chat_id])}</i>\n
+                         پاسخ پشتیبان:\n<b>{escape_special_characters(m.text)}</b>""", parse_mode="HTML")
+        
+        bot.send_message(chat_id=m.chat.id, text="پاسخ شما ارسال شد.")
+        
+        del texts[chat_id]
+        chat_ids.remove(chat_id)
+    
+    else:
+        bot.send_message(chat_id=m.chat.id, text="مشکلی پیش آمده...\nلطفا دوباره امتحان کنید.")
+        
+    bot.delete_state(user_id=m.from_user.id, chat_id=m.chat.id)
+
+
+
+
+
+
+
+
+
 
 @bot.callback_query_handler(func=lambda call: call.data in ["per", "eng"])
 def lang_callback_button(call):
@@ -176,7 +244,22 @@ def proceed(call):
         bot.send_message(call.message.chat_id, text=f"باید در کانال ما جوین شوید.\n{channels_[0]}", reply_markup=markup)
         
         
-        
+
+
+
+
+
+# برای دریافت پاسخ ادمین. آخر میزاریمش تا از فیلتر باقی کال ها رد بشه و اگه هیچکدوم نبود برسه به اینجا
+@bot.callback_query_handler(func=lambda call: True)
+def admin_answer(call):
+    bot.send_message(chat_id=call.message.chat.id, text=f"پیام شما به <code>{call.data}</code> ارسال شد.", parse_mode="HTML")
+    
+    chat_ids.append(int(call.data))
+    # ذخیره پیام ادمین در متغیر ریسپاند
+    bot.set_state(user_id=call.from_user.id, state=Support.respond, chat_id=call.message.chat.id)
+
+
+
 
 
 
