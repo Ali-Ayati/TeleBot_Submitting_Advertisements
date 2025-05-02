@@ -1,8 +1,11 @@
 # This is my data; you should replace it with your own.
 from config import telgram_api, db_config, channels_
-from telebot import TeleBot
+from telebot import TeleBot, custom_filters
 from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
 import mysql.connector
+from telebot.storage import StateMemoryStorage
+from telebot.handler_backends import State, StatesGroup
+import re
 
 
 
@@ -23,8 +26,14 @@ def user_balance(id):
             result = cursor.fetchone()
             return result[0]
 
+class Support(StatesGroup):
+    text = State()
+    respond = State()
 
-bot = TeleBot(telgram_api, parse_mode="HTML")
+
+state_st = StateMemoryStorage()
+
+bot = TeleBot(telgram_api, state_storage=state_st)
 
 
 @bot.message_handler(commands=['start'])
@@ -172,4 +181,6 @@ def proceed(call):
 
 
 
-bot.infinity_polling()
+if __name__ == "__main__":
+    bot.add_custom_filter(custom_filters.StateFilter(bot))
+    bot.infinity_polling()
