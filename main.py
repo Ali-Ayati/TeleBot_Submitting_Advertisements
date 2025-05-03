@@ -25,6 +25,15 @@ def user_balance(id: int) -> int:
             cursor.execute(sql, val)
             result = cursor.fetchone()
             return result[0]
+        
+def lang_check(id: int) -> str:
+    with mysql.connector.connect(**db_config) as connection:
+        with connection.cursor() as cursor:
+            sql = "SELECT lang FROM users WHERE id = %s"
+            val = id
+            cursor.execute(sql, (val,))
+            result = cursor.fetchone()
+            return result
 
 class Support(StatesGroup):
     text = State()
@@ -49,49 +58,47 @@ bot = TeleBot(telgram_api, state_storage=state_st, parse_mode="HTML")
 @bot.message_handler(commands=['start'])
 def start_command(m):
     
-    with mysql.connector.connect(**db_config) as connection:
-        with connection.cursor() as cursor:
-            sql = "SELECT lang FROM users WHERE id = %s"
-            val = m.from_user.id
-            cursor.execute(sql, (val,))
-            result = cursor.fetchone()
+    id = m.from_user.id
+    result = lang_check(id)
             
-            if result:
-                if result[0] == "per":
-                    
-                    markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-                    markup.add("ثبت آگهی")
-                    markup.add("حساب کاربری", "شارژ حساب", "زیرمجموعه گیری", "پشتیبانی")
-                    
-                    bot.send_message(m.chat.id,
-                                        text="""به ربات ما خوش آمدید!
+    if result:
+        if result[0] == "per":
+            
+            markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+            markup.add("ثبت آگهی")
+            markup.add("حساب کاربری", "شارژ حساب", "زیرمجموعه گیری", "پشتیبانی")
+            
+            bot.send_message(m.chat.id,
+                                text="""به ربات ما خوش آمدید!
 این ربات برای ثبت و مدیریت آگهی‌های شما طراحی شده است.
 با استفاده از این ربات، می‌توانید آگهی‌های خود را به راحتی ثبت و منتشر کنید.""", parse_mode="HTML", reply_markup=markup)
-                    
-                else:
-                    
-                    markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-                    markup.add("Submit ADS")
-                    markup.add("my account", "Add Funds", "Referral", "Support")
-                    
-                    bot.send_message(m.chat.id, 
-                                        text="""Welcome to our bot!
+            
+        else:
+            
+            markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+            markup.add("Submit ADS")
+            markup.add("my account", "Add Funds", "Referral", "Support")
+            
+            bot.send_message(m.chat.id, 
+                                text="""Welcome to our bot!
 This bot is designed to help you submit and manage your advertisements.
 You can easily create and publish your ads using this service.""", 
 parse_mode="HTML",
 reply_markup=markup)
-            
-            else:
+    
+    else:
+        with mysql.connector.connect(**db_config) as connection:
+            with connection.cursor() as cursor:
                 sql = "INSERT INTO users (id) VALUES (%s)"
-                cursor.execute(sql, (val,))
+                cursor.execute(sql, (id,))
                 connection.commit()
-                
-                markup = InlineKeyboardMarkup(row_width=1)
-                eng_button = InlineKeyboardButton(text="English", callback_data='eng')
-                per_button = InlineKeyboardButton(text="فارسی", callback_data="per")
-                markup.add(eng_button, per_button)
-                
-                bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
+        
+        markup = InlineKeyboardMarkup(row_width=1)
+        eng_button = InlineKeyboardButton(text="English", callback_data='eng')
+        per_button = InlineKeyboardButton(text="فارسی", callback_data="per")
+        markup.add(eng_button, per_button)
+        
+        bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
 
 
 
@@ -116,13 +123,19 @@ def language(m):
 def account(m):
     txt = m.text
     id = m.from_user.id
+    balance = user_balance(id)
     
     if txt == "حساب کاربری":
-        balance = user_balance(id)
         bot.send_message(m.chat.id, text=f"""اطلاعات حساب کاربری:
 نام کاربری: <a href='tg://user?id={id}'>{m.from_user.first_name}</a>
 شناسه کاربری: <code>{id}</code>
 موجودی: {balance} تومان""", parse_mode="HTML")
+    
+    else:
+        bot.send_message(m.chat.id, text=f"""User Account Information:
+Username: <a href='tg://user?id={id}'>{m.from_user.first_name}</a>
+User ID: <code>{id}</code>
+Balance: {balance} Toman""", parse_mode="HTML")
 
 
 
@@ -136,6 +149,10 @@ def support_message(m):
     
     if txt == "پشتیبانی":
         bot.send_message(chat_id=id, text="لطفا پیام خود را ارسال کنید:")
+        # منتظر پیام کاربر میمونه
+        bot.set_state(user_id=m.from_user.id, state=Support.text, chat_id=id)
+    else:
+        bot.send_message(chat_id=id, text="please send your message:")
         # منتظر پیام کاربر میمونه
         bot.set_state(user_id=m.from_user.id, state=Support.text, chat_id=id)
 
@@ -152,7 +169,12 @@ def support_txt(m):
     bot.send_message(chat_id=admin_id, text=f"""پیامی از کاربر با ای دی <code>{id}</code> با یوزرنیم @{m.from_user.username}:\nمتن پیام:\n
 <b>{escape_special_characters(m.text)}</b>""", reply_markup=markup, parse_mode="HTML")
     
-    bot.send_message(chat_id=m.chat.id, text="پیام شما برای ادمین ارسال شد.")
+    lang = lang_check(id)
+    if lang == "per":
+        bot.send_message(chat_id=m.chat.id, text="پیام شما برای ادمین ارسال شد.")
+    
+    else:
+        bot.send_message(chat_id=m.chat.id, text="Your message has been sent to the admin.")
     
     texts[id] = m.text
     
@@ -163,10 +185,15 @@ def support_txt(m):
 def answer_txt(m):
     "ارسال پاسخ ادمین برای کاربر."
     chat_id = chat_ids[-1]
+    lang = lang_check(m.from_user.id)
     
     if chat_id in texts:
-        bot.send_message(chat_id=chat_id, text=f"""پیام شما: \n<i>{escape_special_characters(texts[chat_id])}</i>\n
-                         پاسخ پشتیبان:\n<b>{escape_special_characters(m.text)}</b>""", parse_mode="HTML")
+        if lang == "per":
+            bot.send_message(chat_id=chat_id, text=f"""پیام شما: \n<i>{escape_special_characters(texts[chat_id])}</i>\n
+پاسخ پشتیبان:\n<b>{escape_special_characters(m.text)}</b>""", parse_mode="HTML")
+        else:
+            bot.send_message(chat_id=chat_id, text=f"""Your message:\n<i>{escape_special_characters(texts[chat_id])}</i>\n
+Support reply:\n<b>{escape_special_characters(m.text)}</b>""", parse_mode="HTML")
         
         bot.send_message(chat_id=m.chat.id, text="پاسخ شما ارسال شد.")
         
@@ -174,7 +201,10 @@ def answer_txt(m):
         chat_ids.remove(chat_id)
     
     else:
-        bot.send_message(chat_id=m.chat.id, text="مشکلی پیش آمده...\nلطفا دوباره امتحان کنید.")
+        if lang == "per":
+            bot.send_message(chat_id=m.chat.id, text="مشکلی پیش آمده...\nلطفا دوباره امتحان کنید.")
+        else:
+            bot.send_message(chat_id=m.chat.id, text="Something went wrong...\nKindly try again.")
         
     bot.delete_state(user_id=m.from_user.id, chat_id=m.chat.id)
 
