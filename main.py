@@ -17,7 +17,7 @@ def check_join(user, channels: list) -> bool:
             return False
     return True
 
-def user_balance(id):
+def user_balance(id: int) -> int:
     with mysql.connector.connect(**db_config) as connection:
         with connection.cursor() as cursor:
             sql = "SELECT balance FROM users WHERE id = %s"
@@ -65,10 +65,8 @@ def start_command(m):
                     
                     bot.send_message(m.chat.id,
                                         text="""به ربات ما خوش آمدید!
-                                        این ربات برای ثبت و مدیریت آگهی‌های شما طراحی شده است.
-                                        با استفاده از این ربات، می‌توانید آگهی‌های خود را به راحتی ثبت و منتشر کنید.""",
-                                        parse_mode="HTML",
-                                        reply_markup=markup)
+این ربات برای ثبت و مدیریت آگهی‌های شما طراحی شده است.
+با استفاده از این ربات، می‌توانید آگهی‌های خود را به راحتی ثبت و منتشر کنید.""", parse_mode="HTML", reply_markup=markup)
                     
                 else:
                     
@@ -78,10 +76,10 @@ def start_command(m):
                     
                     bot.send_message(m.chat.id, 
                                         text="""Welcome to our bot!
-                                        This bot is designed to help you submit and manage your advertisements.
-                                        You can easily create and publish your ads using this service.""", 
-                                        parse_mode="HTML",
-                                        reply_markup=markup)
+This bot is designed to help you submit and manage your advertisements.
+You can easily create and publish your ads using this service.""", 
+parse_mode="HTML",
+reply_markup=markup)
             
             else:
                 sql = "INSERT INTO users (id) VALUES (%s)"
@@ -117,14 +115,14 @@ def language(m):
 @bot.message_handler(func=lambda m: m.text in ["حساب کاربری", "my account"])
 def account(m):
     txt = m.text
-    user_id = m.from_user.id
+    id = m.from_user.id
     
     if txt == "حساب کاربری":
-        balance = user_balance(user_id)
+        balance = user_balance(id)
         bot.send_message(m.chat.id, text=f"""اطلاعات حساب کاربری:
-                         نام کاربری: <a href='tg://user?id={m.from_user.id}>{m.from_user.first_name}</a>
-                         شناسه کاربری: <code>{m.from_user.id}</code>
-                         موجودی: {balance} تومان""", parse_mode="HTML")
+نام کاربری: <a href='tg://user?id={id}'>{m.from_user.first_name}</a>
+شناسه کاربری: <code>{id}</code>
+موجودی: {balance} تومان""", parse_mode="HTML")
 
 
 
@@ -152,7 +150,7 @@ def support_txt(m):
     
     # اینحا ای دی ادمینو قرار میدیم تا پیام کاربر برای ادمین ارسال بشه
     bot.send_message(chat_id=admin_id, text=f"""پیامی از کاربر با ای دی <code>{id}</code> با یوزرنیم @{m.from_user.username}:\nمتن پیام:\n
-                     <b>{escape_special_characters(m.text)}</b>""", reply_markup=markup, parse_mode="HTML")
+<b>{escape_special_characters(m.text)}</b>""", reply_markup=markup, parse_mode="HTML")
     
     bot.send_message(chat_id=m.chat.id, text="پیام شما برای ادمین ارسال شد.")
     
