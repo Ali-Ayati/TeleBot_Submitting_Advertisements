@@ -43,7 +43,7 @@ texts = {}
 
 
 
-bot = TeleBot(telgram_api, state_storage=state_st)
+bot = TeleBot(telgram_api, state_storage=state_st, parse_mode="HTML")
 
 
 @bot.message_handler(commands=['start'])
@@ -51,7 +51,7 @@ def start_command(m):
     
     with mysql.connector.connect(**db_config) as connection:
         with connection.cursor() as cursor:
-            sql = "SELECT id FROM users WHERE id = %s"
+            sql = "SELECT lang FROM users WHERE id = %s"
             val = m.from_user.id
             cursor.execute(sql, (val,))
             result = cursor.fetchone()
@@ -193,7 +193,7 @@ def answer_txt(m):
 def lang_callback_button(call):
     
     data = call.data
-    id = call.from_user.id
+    id = int(call.from_user.id)
     
     if data == 'eng':
         
@@ -201,28 +201,28 @@ def lang_callback_button(call):
         markup.add("Submit ADS")
         markup.add("my account", "Add Funds", "Referral", "Support")
         
-        with mysql.connector.connect() as connection:
+        with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
                 sql = "UPDATE users SET lang = %s WHERE id = %s"
                 val = (data, id)
                 cursor.execute(sql, val)
                 connection.commit()
                 
-                bot.send_message(call.message.chat_id, text="Your language has been changed to English.", reply_markup=markup)
+                bot.send_message(call.message.chat.id, text="Your language has been changed to English.", reply_markup=markup)
     else:
         
         markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
         markup.add("ثبت آگهی")
         markup.add("حساب کاربری", "شارژ حساب", "زیرمجموعه گیری", "پشتیبانی")
         
-        with mysql.connector.connect() as connection:
+        with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
                 sql = "UPDATE users SET lang = %s WHERE id = %s"
                 val = (data, id)
                 cursor.execute(sql, val)
                 connection.commit()
                 
-                bot.send_message(call.message.chat_id, text="زبان شما به فارسی تغییر یافت.")
+                bot.send_message(call.message.chat.id, text="زبان شما به فارسی تغییر یافت.")
 
 
 
@@ -252,7 +252,7 @@ def proceed(call):
 # برای دریافت پاسخ ادمین. آخر میزاریمش تا از فیلتر باقی کال ها رد بشه و اگه هیچکدوم نبود برسه به اینجا
 @bot.callback_query_handler(func=lambda call: True)
 def admin_answer(call):
-    bot.send_message(chat_id=call.message.chat.id, text=f"پیام شما به <code>{call.data}</code> ارسال شد.", parse_mode="HTML")
+    bot.send_message(chat_id=call.message.chat.id, text=f"پیام خود را به <code>{call.data}</code> بنویسید.", parse_mode="HTML")
     
     chat_ids.append(int(call.data))
     # ذخیره پیام ادمین در متغیر ریسپاند
