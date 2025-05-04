@@ -33,7 +33,7 @@ def lang_check(id: int) -> str:
             val = id
             cursor.execute(sql, (val,))
             result = cursor.fetchone()
-            return result
+            return result[0]
 
 class Support(StatesGroup):
     text = State()
@@ -194,12 +194,14 @@ def support_txt(m):
 def answer_txt(m):
     "ارسال پاسخ ادمین برای کاربر."
     chat_id = chat_ids[-1]
-    lang = lang_check(m.from_user.id)
+    lang = lang_check(chat_id)
     
     if chat_id in texts:
+        
         if lang == "per":
             bot.send_message(chat_id=chat_id, text=f"""پیام شما: \n<i>{escape_special_characters(texts[chat_id])}</i>\n
 پاسخ پشتیبان:\n<b>{escape_special_characters(m.text)}</b>""", parse_mode="HTML")
+            
         else:
             bot.send_message(chat_id=chat_id, text=f"""Your message:\n<i>{escape_special_characters(texts[chat_id])}</i>\n
 Support reply:\n<b>{escape_special_characters(m.text)}</b>""", parse_mode="HTML")
