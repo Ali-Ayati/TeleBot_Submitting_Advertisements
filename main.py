@@ -18,22 +18,28 @@ def check_join(user, channels: list) -> bool:
     return True
 
 def user_balance(id: int) -> int:
-    with mysql.connector.connect(**db_config) as connection:
-        with connection.cursor() as cursor:
-            sql = "SELECT balance FROM users WHERE id = %s"
-            val = (id,)
-            cursor.execute(sql, val)
-            result = cursor.fetchone()
-            return result[0]
-        
+    try:    
+        with mysql.connector.connect(**db_config) as connection:
+            with connection.cursor() as cursor:
+                sql = "SELECT balance FROM users WHERE id = %s"
+                val = (id,)
+                cursor.execute(sql, val)
+                result = cursor.fetchone()
+                return result[0]
+    except:
+        return None
+    
 def lang_check(id: int) -> str:
-    with mysql.connector.connect(**db_config) as connection:
-        with connection.cursor() as cursor:
-            sql = "SELECT lang FROM users WHERE id = %s"
-            val = id
-            cursor.execute(sql, (val,))
-            result = cursor.fetchone()
-            return result[0]
+    try:
+        with mysql.connector.connect(**db_config) as connection:
+            with connection.cursor() as cursor:
+                sql = "SELECT lang FROM users WHERE id = %s"
+                val = id
+                cursor.execute(sql, (val,))
+                result = cursor.fetchone()
+                return result[0]
+    except:
+        return None
 
 class Support(StatesGroup):
     text = State()
