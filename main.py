@@ -60,53 +60,62 @@ def start_command(m):
     
     id = m.from_user.id
     result = lang_check(id)
-            
-    if result:
-        if result[0] == "per":
-            
-            markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-            markup.add("ثبت آگهی")
-            markup.add("حساب کاربری", "شارژ حساب", "زیرمجموعه گیری", "پشتیبانی")
-            
-            bot.send_message(m.chat.id,
-                                text="""به ربات ما خوش آمدید!
+    is_member = check_join(m.from_user.id, channels_)
+    
+    if is_member:
+        if result:
+            if result[0] == "per":
+                
+                markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+                markup.add("ثبت آگهی")
+                markup.add("حساب کاربری", "شارژ حساب", "زیرمجموعه گیری", "پشتیبانی")
+                markup.add('/زبان')
+                
+                bot.send_message(m.chat.id,
+                                    text="""به ربات ما خوش آمدید!
 این ربات برای ثبت و مدیریت آگهی‌های شما طراحی شده است.
 با استفاده از این ربات، می‌توانید آگهی‌های خود را به راحتی ثبت و منتشر کنید.""", parse_mode="HTML", reply_markup=markup)
-            
-        else:
-            
-            markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-            markup.add("Submit ADS")
-            markup.add("my account", "Add Funds", "Referral", "Support")
-            
-            bot.send_message(m.chat.id, 
-                                text="""Welcome to our bot!
+                
+            else:
+                
+                markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+                markup.add("Submit ADS")
+                markup.add("my account", "Add Funds", "Referral", "Support")
+                markup.add('/language')
+                
+                bot.send_message(m.chat.id, 
+                                    text="""Welcome to our bot!
 This bot is designed to help you submit and manage your advertisements.
 You can easily create and publish your ads using this service.""", 
 parse_mode="HTML",
 reply_markup=markup)
-    
+        
+        else:
+            with mysql.connector.connect(**db_config) as connection:
+                with connection.cursor() as cursor:
+                    sql = "INSERT INTO users (id) VALUES (%s)"
+                    cursor.execute(sql, (id,))
+                    connection.commit()
+            
+            markup = InlineKeyboardMarkup(row_width=1)
+            eng_button = InlineKeyboardButton(text="English", callback_data='eng')
+            per_button = InlineKeyboardButton(text="فارسی", callback_data="per")
+            markup.add(eng_button, per_button)
+            
+            bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
+
     else:
-        with mysql.connector.connect(**db_config) as connection:
-            with connection.cursor() as cursor:
-                sql = "INSERT INTO users (id) VALUES (%s)"
-                cursor.execute(sql, (id,))
-                connection.commit()
+        markup = InlineKeyboardMarkup()
+        button = InlineKeyboardButton(text="تایید", callback_data='proceed')
+        markup.add(button)
         
-        markup = InlineKeyboardMarkup(row_width=1)
-        eng_button = InlineKeyboardButton(text="English", callback_data='eng')
-        per_button = InlineKeyboardButton(text="فارسی", callback_data="per")
-        markup.add(eng_button, per_button)
-        
-        bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
+        bot.send_message(m.chat.id, text=f"باید در کانال ما جوین شوید.\n{channels_[0]}", reply_markup=markup)
 
 
 
 
 
-
-
-@bot.message_handler(commands=['language'])
+@bot.message_handler(commands=['language', 'زبان'])
 def language(m):
     markup = InlineKeyboardMarkup(row_width=1)
     eng_button = InlineKeyboardButton(text="English", callback_data='eng')
@@ -228,6 +237,7 @@ def lang_callback_button(call):
         markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
         markup.add("Submit ADS")
         markup.add("my account", "Add Funds", "Referral", "Support")
+        markup.add('/language')
         
         with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
@@ -242,6 +252,7 @@ def lang_callback_button(call):
         markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
         markup.add("ثبت آگهی")
         markup.add("حساب کاربری", "شارژ حساب", "زیرمجموعه گیری", "پشتیبانی")
+        markup.add('/زبان')
         
         with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
@@ -250,7 +261,7 @@ def lang_callback_button(call):
                 cursor.execute(sql, val)
                 connection.commit()
                 
-                bot.send_message(call.message.chat.id, text="زبان شما به فارسی تغییر یافت.")
+                bot.send_message(call.message.chat.id, text="زبان شما به فارسی تغییر یافت.", reply_markup=markup)
 
 
 
@@ -262,14 +273,17 @@ def proceed(call):
     is_member = check_join(call.from_user.id, channels_)
     
     if is_member:
+        markup = ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+        markup.add("/start")
+        
+        bot.send_message(call.message.chat.id, text=f"شما مجاز به استفاده از ربات هستید.", reply_markup=markup)
+    
+    else:
         markup = InlineKeyboardMarkup()
         button = InlineKeyboardButton(text="تایید", callback_data='proceed')
         markup.add(button)
         
-        bot.send_message(call.message.chat_id, text=f"شما مجاز به استفاده از ربات هستید.", reply_markup=markup)
-    
-    else:
-        bot.send_message(call.message.chat_id, text=f"باید در کانال ما جوین شوید.\n{channels_[0]}", reply_markup=markup)
+        bot.send_message(call.message.chat.id, text=f"باید در کانال ما جوین شوید.\n{channels_[0]}", reply_markup=markup)
         
         
 
