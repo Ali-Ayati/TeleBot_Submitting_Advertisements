@@ -1,7 +1,7 @@
 # This is my data; you should replace it with your own.
-from config import telgram_api, db_config, channels_, admin_id
+from config import telgram_api, db_config, channels_, admin_id, channel_id
 from telebot import TeleBot, custom_filters
-from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
+from telebot.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, Message, CallbackQuery
 import mysql.connector
 from telebot.storage import StateMemoryStorage
 from telebot.handler_backends import State, StatesGroup
@@ -44,6 +44,7 @@ def lang_check(id: int) -> str:
 class Support(StatesGroup):
     text = State()
     respond = State()
+    agahi = State()
 
 def escape_special_characters(txt):
     special_char = r"(\*\_\[\]\(\)\~\`\>\#\+\-\=\|\{\}\.\!)"
@@ -97,8 +98,16 @@ parse_mode="HTML",
 reply_markup=markup)
         
         else:
+            
             with mysql.connector.connect(**db_config) as connection:
                 with connection.cursor() as cursor:
+                    # اگر کاربر بار اولش بود میومد و با لینک زیرمجموعه گیری کسی اومده بود جایزه به حسابش واریز میشه.
+                    token = m.text.split()
+                    if len(token) > 1:
+                        sql = f"UPDATE users SET balance = balance + 10000 WHERE id = {token[1]}"
+                        cursor.execute(sql, (id,))
+                        connection.commit()
+                    
                     sql = "INSERT INTO users (id) VALUES (%s)"
                     cursor.execute(sql, (id,))
                     connection.commit()
@@ -118,8 +127,7 @@ reply_markup=markup)
         bot.send_message(m.chat.id, text=f"باید در کانال ما جوین شوید.\n{channels_[0]}", reply_markup=markup)
 
 
-
-
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
 @bot.message_handler(commands=['language', 'زبان'])
 def language(m):
@@ -131,6 +139,7 @@ def language(m):
     bot.send_message(m.chat.id, text="کاربر عزیز لطفا زبان خود را انتخاب کنید:\n\nDear user, please select your language.", reply_markup=markup)
 
 
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
 
 
@@ -153,6 +162,7 @@ User ID: <code>{id}</code>
 Balance: {balance} Toman""", parse_mode="HTML")
 
 
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
 
 
@@ -196,6 +206,9 @@ def support_txt(m):
     # این برای اینه که دیگه منتظر پیام کاربر برای ارسال به ادمین نمونه رباتمون
     bot.delete_state(user_id=id, chat_id=m.chat.id)
 
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
+
+
 @bot.message_handler(state=Support.respond)
 def answer_txt(m):
     "ارسال پاسخ ادمین برای کاربر."
@@ -225,13 +238,7 @@ Support reply:\n<b>{escape_special_characters(m.text)}</b>""", parse_mode="HTML"
         
     bot.delete_state(user_id=m.from_user.id, chat_id=m.chat.id)
 
-
-
-
-
-
-
-
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
 
 @bot.callback_query_handler(func=lambda call: call.data in ["per", "eng"])
@@ -272,9 +279,7 @@ def lang_callback_button(call):
                 bot.send_message(call.message.chat.id, text="زبان شما به فارسی تغییر یافت.", reply_markup=markup)
 
 
-
-
-
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
         
 @bot.callback_query_handler(func=lambda call: call.data == 'proceed')
 def proceed(call):
@@ -294,9 +299,113 @@ def proceed(call):
         bot.send_message(call.message.chat.id, text=f"باید در کانال ما جوین شوید.\n{channels_[0]}", reply_markup=markup)
         
         
+        
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
+"زیرمجموعه گیری"
+@bot.message_handler(func= lambda m: m.text == "زیرمجموعه گیری")
+def referral(m):
+    user_id = m.from_user.id
+    with open("referral.png", "rb") as photo:
+        bot.send_photo(chat_id=user_id, photo=photo, caption=f"لینک زیر مجموعه گیری شما:\n\nhttps://t.me/your_bot?start={user_id}")
+        
+        
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
+"ثبت آگهی"
+@bot.message_handler(func= lambda m: m.text == "ثبت آگهی")
+def get_agahi(m: Message):
+    user_id = m.from_user.id
+    
+    bot.send_message(chat_id=user_id, text="آگهی خود را ارسال کنید:")
+    bot.set_state(chat_id=m.chat.id, state=Support.agahi, user_id=user_id)
+    
+    
+@bot.message_handler(state=Support.agahi)
+def get_agahi_2(m: Message):
+    
+    markup = InlineKeyboardMarkup()
+    button_1 = InlineKeyboardButton(text="رد کردن", callback_data="denie")
+    button_2 = InlineKeyboardButton(text="تایید کردن", callback_data="confirm")
+    markup.add(button_1, button_2)
+    
+    forwarded_m = bot.forward_message(chat_id=admin_id, from_chat_id=m.chat.id, message_id=m.message_id)
+    
+    bot.send_message(chat_id=admin_id, text=f"این کاربر میخواد آگهی ثبت کنه:\n\nایدی کاربر: {m.from_user.id}", reply_markup=markup, reply_to_message_id=forwarded_m.message_id)
+    
+    bot.send_message(chat_id=m.chat.id, text="آگهی شما توسط ادمین بررسی خواهد شد و نتیجه اعلام میگردد.")
+    bot.delete_state(user_id=m.from_user.id, chat_id=m.chat.id)
+    
+@bot.callback_query_handler(lambda call: call.data == "denie")
+def denie(call: CallbackQuery):
+    admin_id = call.from_user.id
+    
+    pattern = r"ایدی کاربر: \d+"
+    user_id = int(re.findall(pattern=pattern, string=call.message.text)[0].split()[2])
+    
+    markup = InlineKeyboardMarkup()
+    button = InlineKeyboardButton(text="با موفقیت رد شد.")
+    markup.add(button)
+    
+    bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+    
+    bot.send_message(chat_id=user_id, text="درخواست شما رد شد.")
+    
+@bot.callback_query_handler(lambda call: call.data == "confirm")
+def confirm(call: CallbackQuery):
+    admin_id = call.from_user.id
+    
+    pattern = r"ایدی کاربر: \d+"
+    user_id = int(re.findall(pattern=pattern, string=call.message.text)[0].split()[2])
+    
+    # انتشار آگهی توی کانال مورد نظر
+    bot.copy_message(
+        chat_id=channel_id, # همون چنلی که میخوایم آگهی داخلش منتشر بشه
+        from_chat_id=call.message.chat.id,
+        message_id=call.message.reply_to_message.message_id
+    )
+    
+    markup = InlineKeyboardMarkup()
+    button = InlineKeyboardButton(text="با موفقیت تایید شد")
+    markup.add(button)
+    
+    bot.edit_message_reply_markup(chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+    
+    bot.send_message(chat_id=user_id, text="آگهی شما با موفقیت ثبت شد.")
+    
+
+
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
+
+# شارژ حساب
+@bot.message_handler(func= lambda m: m.text == "شارژ حساب")
+def charge_account(m):
+    
+    markup = InlineKeyboardMarkup(row_width=3)
+    butt_1 = InlineKeyboardButton(text="۱۰ هزار تومان", callback_data="10")
+    butt_2 = InlineKeyboardButton(text="2۰ هزار تومان", callback_data="20")
+    markup.add(butt_1, butt_2)
+    
+    bot.send_message(chat_id=m.chat.id, text="مقدار شارژ خود را انتخاب کنید: ", reply_markup=markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == "10")
+def ten(call):
+    
+    user_id = call.from_user.id
+    
+    markup = InlineKeyboardMarkup()
+    button = InlineKeyboardButton(text="پرداخت", url=f"https://your_site_address/zarinpal/request/?user={user_id}")
+    markup.add(button)
+    
+    bot.send_message(chat_id=user_id, text="از طریق زدن دکمه زیر پرداخت خود را انجام دهید:", reply_markup=markup)
 
 
 
+@bot.callback_query_handler(func=lambda call: call.data == "20")
+def twenty(call):
+    pass
+
+
+# ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
 
 # برای دریافت پاسخ ادمین. آخر میزاریمش تا از فیلتر باقی کال ها رد بشه و اگه هیچکدوم نبود برسه به اینجا
@@ -307,9 +416,6 @@ def admin_answer(call):
     chat_ids.append(int(call.data))
     # ذخیره پیام ادمین در متغیر ریسپاند
     bot.set_state(user_id=call.from_user.id, state=Support.respond, chat_id=call.message.chat.id)
-
-
-
 
 
 
