@@ -1,9 +1,7 @@
 note.txt
 pipfile
 pipfile.lock
-config.py
 __pycache__
 test.py
-support_with_db.py
-CREATE_TB_EVENT_MANAGEMENT.sql
-CREATE_TB_admins.sql
+config/_config.py
+test_main.py
