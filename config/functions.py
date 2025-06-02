@@ -93,8 +93,8 @@ class Lang():
                 "eng": "Your message:\n<i>%s</i>\n\nSupport reply:\n<b>%s</b>"
             },
             "referral_link": {
-                "per": "📣 <b>لینک دعوت شما:</b>\n\n👇 برای دعوت دوستانتان از لینک زیر استفاده کنید 👇\n\n<a href='https://t.me/test2085bot?start=%s'>https://t.me/test2085bot?start=%s</a>",
-                "eng": "📣 <b>Your Referral Link:</b>\n\n👇 Use the link below to invite your friends 👇\n\n<a href='https://t.me/test2085bot?start=%s'>https://t.me/test2085bot?start=%s</a>"
+                "per": "📣 <b>لینک دعوت شما:</b>\n\n👇 برای دعوت دوستانتان از لینک زیر استفاده کنید 👇\n\n<a href='https://t.me/yourbot_id?start=%s'>https://t.me/yourbot_id?start=%s</a>",
+                "eng": "📣 <b>Your Referral Link:</b>\n\n👇 Use the link below to invite your friends 👇\n\n<a href='https://t.me/yourbot_id?start=%s'>https://t.me/yourbot_id?start=%s</a>"
             },
             "send_ad_prompt": {
                 "per": "📝 <b>لطفاً آگهی خود را ارسال کنید:</b>\n\nشما می‌توانید متن، عکس یا ویدیو مرتبط با آگهی را ارسال نمایید.",
