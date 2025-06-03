@@ -8,17 +8,38 @@ import re
 
 
 def check_join(user_id: int, channels: list, bot: TeleBot) -> bool:
+    """
+    Check if a user has joined all specified channels.
+
+    Args:
+        user_id (int): The Telegram user ID.
+        channels (list): A list of channel IDs or usernames to check.
+        bot (TeleBot): The TeleBot instance.
+
+    Returns:
+        bool: True if user is a member of all channels, False otherwise.
+    """
     for i in channels:
         is_member = bot.get_chat_member(chat_id=i, user_id=user_id)
         
-        if is_member.status in ['kicked', 'left']: # اگر هیچوقت هم جوین نداده بود میشه left
+        # If user is not a member or has been kicked
+        if is_member.status in ['kicked', 'left']:
             return False
     return True
 
 # ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
 def user_balance(id: int) -> int:
-    try:    
+    """
+    Retrieve the user's account balance from the database.
+
+    Args:
+        id (int): The Telegram user ID.
+
+    Returns:
+        int: The user's balance, or None if there is a database error.
+    """
+    try:
         with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
                 sql = "SELECT balance FROM users WHERE id = %s"
@@ -31,6 +52,15 @@ def user_balance(id: int) -> int:
 # ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
     
 def lang_check(id: int) -> str:
+    """
+    Retrieve the user's language preference from the database.
+
+    Args:
+        id (int): The Telegram user ID.
+
+    Returns:
+        str: The language code (e.g., 'en', 'per'), or None on error.
+    """
     try:
         with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
@@ -44,14 +74,37 @@ def lang_check(id: int) -> str:
 
 # ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
-def escape_special_characters(txt):
+def escape_special_characters(txt: str) -> str:
+    """
+    Escape special characters in a given string for safe Telegram formatting.
+
+    Args:
+        txt (str): Input text that may contain special Markdown/V2 characters.
+
+    Returns:
+        str: Escaped string safe for Telegram message formatting.
+    """
     special_char = r"(\*\_\[\]\(\)\~\`\>\#\+\-\=\|\{\}\.\!)"
     return re.sub(special_char, r'\\\1', txt)
 
 # ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
 class Lang():
+    """
+    Language handler class to return multilingual text messages based on user language preference.
+
+    Attributes:
+        lang (str): Language code ('per' for Persian, 'eng' for English).
+        messages (dict): Dictionary of all supported messages in both languages.
+    """
+
     def __init__(self, lang: str = "per"):
+        """
+        Initialize the Lang class with selected language and message dictionary.
+
+        Args:
+            lang (str, optional): Language code. Defaults to "per".
+        """
         self.lang = lang
         self.messages = {
             "join_required_message" : {
@@ -127,38 +180,62 @@ class Lang():
         }
         
     def get(self, key: str) -> str:
+        """
+        Retrieve the message string based on the language and key.
+
+        Args:
+            key (str): The message identifier.
+
+        Returns:
+            str: The localized message, or fallback '[key]' if not found.
+        """
         return self.messages.get(key, {}).get(self.lang, f"[{key}]")
     
 # ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
 def get_referral(token: int, gift: int) -> bool:
-    "اگر کاربر از طرف کاربر دیگری دعوت شده باشه، کاربر دعوت کننده جایزه میگیره"
-    
+    """
+    If the user was invited by another user, reward the inviter with a gift amount.
+
+    Args:
+        token (int): ID of the referring user.
+        gift (int): Amount to add to the inviter's balance.
+
+    Returns:
+        bool: True if balance update was successful, False otherwise.
+    """
     try:    
         with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
-                # اگر کاربر بار اولش بود میومد و با لینک زیرمجموعه گیری کسی اومده بود جایزه به حسابش واریز میشه
+                # If the user is new and was referred, reward the inviter.
                 sql = f"UPDATE users SET balance = balance + {gift} WHERE id = {token}"
                 cursor.execute(sql)
                 connection.commit()
                 return True
-            
     except Exception as e:
         print(f"get_referral ERROR: {e}")
         return False
 
 # ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
-def add_new_member(user_id: int):
+def add_new_member(user_id: int) -> bool:
+    """
+    Add a new user to the database.
+
+    Args:
+        user_id (int): ID of the new user.
+
+    Returns:
+        bool: True if the user was added successfully, False otherwise.
+    """
     try:    
         with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
-                # اگر کاربر بار اولش بود میومد و با لینک زیرمجموعه گیری کسی اومده بود جایزه به حسابش واریز میشه
+                # Insert a new user (e.g., upon first-time join).
                 sql = "INSERT INTO users (id) VALUES (%s)"
                 cursor.execute(sql, (user_id,))
                 connection.commit()
                 return True
-            
     except Exception as e:
         print(f"add_new_member ERROR: {e}")
         return False
@@ -166,31 +243,48 @@ def add_new_member(user_id: int):
 # ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
 def change_lang(user_id: int, lang: str) -> bool:
-    
+    """
+    Change the language preference of a user.
+
+    Args:
+        user_id (int): User's ID.
+        lang (str): New language code to set (e.g., 'per', 'eng').
+
+    Returns:
+        bool: True if the update was successful, False otherwise.
+    """
     try:
         with mysql.connector.connect(**db_config) as conn:
             with conn.cursor() as cur:
-                sql = "UPDATE users SET lang = %s"
-                cur.execute(sql, (lang,))
+                # Update the user's preferred language.
+                sql = "UPDATE users SET lang = %s WHERE id = %s"
+                cur.execute(sql, (lang, user_id))
                 conn.commit()
                 return True
-        
     except Exception as e:
         print(f"change_lang Error: {e}")
         return False
     
 # ــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــــ
 
-def advertise_pay(user_id: int):
+def advertise_pay(user_id: int) -> bool:
+    """
+    Deduct the advertisement fee from the user's balance.
+
+    Args:
+        user_id (int): User ID whose balance should be reduced.
+
+    Returns:
+        bool: True if deduction was successful, False otherwise.
+    """
     try:    
         with mysql.connector.connect(**db_config) as connection:
             with connection.cursor() as cursor:
-                # هزینه تبلیغات کسر میشود.
+                # Deduct advertisement fee from user's balance.
                 sql = f"UPDATE users SET balance = balance - {advertisement_fee} WHERE id = {user_id}"
                 cursor.execute(sql)
                 connection.commit()
                 return True
-            
     except Exception as e:
         print(f"advertise_pay ERROR: {e}")
         return False
